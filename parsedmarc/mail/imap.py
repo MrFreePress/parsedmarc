@@ -30,6 +30,7 @@ class IMAPConnection(MailboxConnection):
         self._username = user
         self._password = password
         self._verify = verify
+        self._current_folder = None
         self._client = IMAPClient(
             host,
             user,
@@ -45,6 +46,7 @@ class IMAPConnection(MailboxConnection):
         self._client.create_folder(folder_name)
 
     def fetch_messages(self, reports_folder: str, **kwargs):
+        self._current_folder = reports_folder
         self._client.select_folder(reports_folder)
         since = kwargs.get("since")
         if since:
@@ -52,17 +54,32 @@ class IMAPConnection(MailboxConnection):
         else:
             return self._client.search()
 
+    def _ensure_folder_selected(self):
+        """Ensure the current folder is still selected (Gmail may drop selection)"""
+        if self._current_folder:
+            try:
+                self._client.select_folder(self._current_folder)
+            except Exception as e:
+                logger.debug(f"Error reselecting folder: {e}")
+
     def fetch_message(self, message_id: int):
         try:
             return self._client.fetch_message(message_id, parse=False)
         except KeyError as e:
-            # Gmail IMAP sometimes returns messages with different UIDs
-            # than requested, try fetching directly and handle response
-            logger.warning(
-                f"Message UID {message_id} not found in fetch response. "
-                f"Message may have been moved or deleted. Error: {e}"
+            # Gmail IMAP may return different UID or folder selection was lost
+            # Try reselecting the folder and fetching again
+            logger.debug(
+                f"Message UID {message_id} not found, reselecting folder..."
             )
-            raise
+            self._ensure_folder_selected()
+            try:
+                return self._client.fetch_message(message_id, parse=False)
+            except KeyError:
+                logger.warning(
+                    f"Message UID {message_id} not found in fetch response. "
+                    f"Message may have been moved or deleted."
+                )
+                raise
 
     def delete_message(self, message_id: int):
         self._client.delete_messages([message_id])
