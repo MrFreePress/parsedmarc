@@ -1,0 +1,42 @@
+# parsedmarc configuration for Gmail IMAP access
+#
+# IMPORTANT: Before using, ensure:
+# 1. IMAP is enabled in Gmail: Settings -> See all settings -> Forwarding and POP/IMAP
+# 2. You're using a Gmail App Password (not your regular password)
+#    Create one at: https://myaccount.google.com/apppasswords
+# 3. You have a label called "DMARC" in Gmail with your DMARC report emails
+#
+# Copy this file to parsedmarc_gmail.ini and fill in your credentials
+
+[general]
+save_aggregate = True
+save_forensic = True
+# Output directory for JSON/CSV reports
+output = ./output
+
+[imap]
+host = imap.gmail.com
+port = 993
+ssl = True
+user = your-email@gmail.com
+# This should be a Gmail App Password (16 characters, no spaces)
+password = your-app-password
+
+[mailbox]
+# The Gmail label where DMARC reports are stored
+reports_folder = DMARC
+# Optional: folder to move processed emails to
+# archive_folder = DMARC/Processed
+# Set to True to continuously monitor for new emails
+watch = False
+# Set to True to delete emails after processing (requires additional scope)
+delete = False
+# Process emails in batches
+batch_size = 10
+# How far back to look for emails (in minutes, e.g., 1440 = 24 hours)
+# since = 1440
+
+# Uncomment below if you want to use Elasticsearch
+# [elasticsearch]
+# hosts = http://localhost:9200
+# index_prefix = parsedmarc
