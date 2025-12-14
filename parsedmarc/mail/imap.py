@@ -53,7 +53,16 @@ class IMAPConnection(MailboxConnection):
             return self._client.search()
 
     def fetch_message(self, message_id: int):
-        return self._client.fetch_message(message_id, parse=False)
+        try:
+            return self._client.fetch_message(message_id, parse=False)
+        except KeyError as e:
+            # Gmail IMAP sometimes returns messages with different UIDs
+            # than requested, try fetching directly and handle response
+            logger.warning(
+                f"Message UID {message_id} not found in fetch response. "
+                f"Message may have been moved or deleted. Error: {e}"
+            )
+            raise
 
     def delete_message(self, message_id: int):
         self._client.delete_messages([message_id])

@@ -1899,13 +1899,20 @@ def get_dmarc_reports_from_mailbox(
                 i + 1, message_limit, msg_uid
             )
         )
-        if isinstance(mailbox, MSGraphConnection):
-            if test:
-                msg_content = connection.fetch_message(msg_uid, mark_read=False)
+        try:
+            if isinstance(mailbox, MSGraphConnection):
+                if test:
+                    msg_content = connection.fetch_message(msg_uid, mark_read=False)
+                else:
+                    msg_content = connection.fetch_message(msg_uid, mark_read=True)
             else:
-                msg_content = connection.fetch_message(msg_uid, mark_read=True)
-        else:
-            msg_content = connection.fetch_message(msg_uid)
+                msg_content = connection.fetch_message(msg_uid)
+        except KeyError as e:
+            logger.warning(
+                f"Skipping message UID {msg_uid}: message not found "
+                f"(may have been moved or deleted). Error: {e}"
+            )
+            continue
         try:
             sa = strip_attachment_payloads
             parsed_email = parse_report_email(
